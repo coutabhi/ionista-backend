@@ -31,4 +31,7 @@ public class RegisterRequest {
 
     @Size(max = 20, message = "Phone number cannot exceed 20 characters")
     private String phoneNumber;
+
+    @Size(max = 20, message = "Referral code cannot exceed 20 characters")
+    private String referralCode;
 }

@@ -2,6 +2,15 @@ spring:
   application:
     name: ionista-backend
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email,profile
+
   datasource:
     url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/ionista?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:ionista_user}
@@ -17,9 +26,47 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 server:
   port: 8080
 
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+app:
+  oauth2:
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:3000/oauth2/callback}
+    frontend-failure-uri: ${OAUTH2_FRONTEND_FAILURE_URI:http://localhost:3000/login?error=oauth2}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID}
+  key-secret: ${RAZORPAY_KEY_SECRET}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+
+shipping:
+  flat-fee: ${SHIPPING_FLAT_FEE:0}
+
+loyalty:
+  points-per-currency-unit: ${LOYALTY_EARN_RATE:100}
+  point-value-in-currency: ${LOYALTY_REDEEM_VALUE:1}
+  referral-bonus-points: ${LOYALTY_REFERRAL_BONUS:50}
+
+rate-limit:
+  auth:
+    capacity: ${RATE_LIMIT_AUTH_CAPACITY:10}
+    refill-tokens: ${RATE_LIMIT_AUTH_REFILL:10}
+    refill-duration-minutes: ${RATE_LIMIT_AUTH_REFILL_MINUTES:1}

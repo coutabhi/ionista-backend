@@ -1,8 +1,11 @@
 package com.ionista.controller;
 
+import com.ionista.dto.request.ExchangeCodeRequest;
 import com.ionista.dto.request.LoginRequest;
+import com.ionista.dto.request.RefreshTokenRequest;
 import com.ionista.dto.request.RegisterRequest;
 import com.ionista.dto.response.AuthResponse;
+import com.ionista.dto.response.TokenPairResponse;
 import com.ionista.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,24 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenPairResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        TokenPairResponse response = authService.refresh(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/oauth2/exchange")
+    public ResponseEntity<TokenPairResponse> exchangeOAuthCode(@Valid @RequestBody ExchangeCodeRequest request) {
+        TokenPairResponse response = authService.exchangeOAuthCode(request);
         return ResponseEntity.ok(response);
     }
 
