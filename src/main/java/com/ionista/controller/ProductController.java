@@ -31,7 +31,7 @@ public class ProductController {
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) String size,
+            @RequestParam(name = "variantSize", required = false) String size,
             @RequestParam(required = false) String color,
             @RequestParam(required = false) String keyword,
             Pageable pageable) {

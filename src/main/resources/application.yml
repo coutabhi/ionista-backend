@@ -40,12 +40,12 @@ jwt:
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 app:
   oauth2:
-    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:3000/oauth2/callback}
-    frontend-failure-uri: ${OAUTH2_FRONTEND_FAILURE_URI:http://localhost:3000/login?error=oauth2}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth2/callback}
+    frontend-failure-uri: ${OAUTH2_FRONTEND_FAILURE_URI:http://localhost:5173/login?error=oauth2}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME}
