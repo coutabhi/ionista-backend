@@ -201,6 +201,62 @@ Razorpay needs a publicly reachable URL to call your webhook endpoint (`POST /ap
 
 ---
 
+## 9. Deploying to Railway
+
+The repo includes a multistage `Dockerfile`, which Railway builds automatically — no Nixpacks config needed.
+
+### 9.1 Push to GitHub
+
+Railway deploys from a GitHub repo. Push this repo there if it isn't already.
+
+### 9.2 Create the project
+
+1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → select this repo.
+2. Railway detects the `Dockerfile` and builds from it automatically.
+
+### 9.3 Add a MySQL database
+
+In the same project: **New** → **Database** → **Add MySQL**. Railway provisions an instance and exposes `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE` as variables on that MySQL service.
+
+### 9.4 Configure environment variables on the app service
+
+Open the **app service** (not the MySQL service) → **Variables**, and set:
+
+```
+DB_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+DB_USERNAME=${{MySQL.MYSQLUSER}}
+DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+```
+
+`${{MySQL.VAR}}` is Railway's variable-reference syntax — it resolves to the MySQL service's values automatically, including if they ever rotate. Then set the rest of the vars from the table in step 2 above (`JWT_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `CLOUDINARY_*`, `RAZORPAY_*`, `CORS_ALLOWED_ORIGINS`, `OAUTH2_FRONTEND_REDIRECT_URI`, `OAUTH2_FRONTEND_FAILURE_URI`) with real/production values. Point `CORS_ALLOWED_ORIGINS` and the OAuth2 redirect/failure URIs at your future frontend's domain once you know it.
+
+Do **not** set `PORT` or `SERVER_PORT` yourself — Railway injects `PORT` at runtime, and `server.port` already reads it (`${PORT:8080}`).
+
+### 9.5 Set the health check path
+
+**Settings** → **Healthcheck Path** → `/actuator/health`. This endpoint is permitted without auth in `SecurityConfig`, so Railway can poll it to confirm the container is up before routing traffic to it.
+
+### 9.6 Generate a public domain
+
+**Settings** → **Networking** → **Generate Domain**. You'll get something like `https://ionista-backend-production.up.railway.app`.
+
+### 9.7 Point third-party callbacks at the live URL
+
+- **Google Cloud Console** → your OAuth client → Authorized redirect URIs → add `https://<your-domain>/login/oauth2/code/google`.
+- **Razorpay Dashboard** → Webhooks → add `https://<your-domain>/api/v1/webhooks/razorpay`, using the same secret you set as `RAZORPAY_WEBHOOK_SECRET`.
+- Cloudinary needs no callback — server-to-Cloudinary uploads work as soon as `CLOUDINARY_*` vars are correct.
+
+### 9.8 Verify the deployment
+
+```bash
+curl https://<your-domain>/actuator/health
+curl https://<your-domain>/api/v1/categories   # should return []
+```
+
+Then open `https://<your-domain>/swagger-ui/index.html` and repeat the smoke test from step 6 against the live URL. Test an admin product-image upload to confirm Cloudinary works end-to-end from the deployed server.
+
+---
+
 ## Project structure
 
 ```
@@ -228,4 +284,4 @@ src/main/java/com/ionista/
 - Replace `jpa.hibernate.ddl-auto: update` with a proper migration tool (Flyway/Liquibase).
 - Move rate limiting from in-memory (Bucket4j `ConcurrentHashMap`) to a distributed store (Redis) if running multiple instances.
 - Put real secrets in a secret manager (AWS Secrets Manager / Vault) rather than plain environment variables.
-- Add HTTPS termination (reverse proxy / load balancer) — the app itself serves plain HTTP.
+- Add HTTPS termination (reverse proxy / load balancer) — the app itself serves plain HTTP. Railway terminates TLS at its edge automatically for generated domains, so this is only a concern for other deploy targets.
