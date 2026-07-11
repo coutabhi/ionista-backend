@@ -26,4 +26,10 @@ public class Category extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "image_public_id", length = 200)
+    private String imagePublicId;
 }

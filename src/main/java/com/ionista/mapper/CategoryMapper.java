@@ -14,6 +14,7 @@ public class CategoryMapper {
                 .slug(category.getSlug())
                 .parentId(category.getParent() != null ? category.getParent().getId() : null)
                 .active(category.isActive())
+                .imageUrl(category.getImageUrl())
                 .build();
     }
 }

@@ -7,6 +7,7 @@ import com.ionista.exception.ConflictException;
 import com.ionista.exception.ResourceNotFoundException;
 import com.ionista.mapper.CategoryMapper;
 import com.ionista.repository.CategoryRepository;
+import com.ionista.service.CloudinaryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,6 +29,8 @@ class CategoryServiceImplTest {
     private CategoryRepository categoryRepository;
     @Mock
     private CategoryMapper categoryMapper;
+    @Mock
+    private CloudinaryService cloudinaryService;
 
     @InjectMocks
     private CategoryServiceImpl categoryService;
