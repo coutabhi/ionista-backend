@@ -24,6 +24,7 @@ import com.ionista.repository.spec.ProductSpecifications;
 import com.ionista.service.CloudinaryService;
 import com.ionista.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -32,7 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
@@ -260,8 +263,28 @@ public class ProductServiceImpl implements ProductService {
         ProductImage image = productImageRepository.findByIdAndProductId(imageId, productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
 
-        cloudinaryService.delete(image.getPublicId());
+        boolean wasPrimary = image.isPrimary();
+
+        if (image.getPublicId() != null) {
+            try {
+                cloudinaryService.delete(image.getPublicId());
+            } catch (Exception e) {
+                log.warn("Failed to delete Cloudinary asset {} for product {}: {}",
+                        image.getPublicId(), productId, e.getMessage());
+            }
+        }
+
         productImageRepository.delete(image);
+
+        if (wasPrimary) {
+            productImageRepository.findByProductId(productId).stream()
+                    .min(Comparator.comparingInt(ProductImage::getSortOrder))
+                    .ifPresent(next -> {
+                        next.setPrimary(true);
+                        productImageRepository.save(next);
+                    });
+        }
+
         return getById(productId);
     }
 
