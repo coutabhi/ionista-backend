@@ -3,14 +3,18 @@ package com.ionista.service.impl;
 import com.ionista.common.SlugUtils;
 import com.ionista.dto.request.CategoryRequest;
 import com.ionista.dto.response.CategoryResponse;
+import com.ionista.dto.response.ImageUploadResult;
 import com.ionista.entity.Category;
 import com.ionista.exception.ConflictException;
 import com.ionista.exception.ResourceNotFoundException;
 import com.ionista.mapper.CategoryMapper;
 import com.ionista.repository.CategoryRepository;
 import com.ionista.service.CategoryService;
+import com.ionista.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -20,6 +24,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     public List<CategoryResponse> listTopLevel() {
@@ -94,6 +99,19 @@ public class CategoryServiceImpl implements CategoryService {
     public void delete(Long id) {
         Category category = findCategory(id);
         categoryRepository.delete(category);
+    }
+
+    @Override
+    @Transactional
+    public CategoryResponse uploadImage(Long id, MultipartFile file) {
+        Category category = findCategory(id);
+        if (category.getImagePublicId() != null) {
+            cloudinaryService.delete(category.getImagePublicId());
+        }
+        ImageUploadResult result = cloudinaryService.upload(file, "ionista/categories");
+        category.setImageUrl(result.getUrl());
+        category.setImagePublicId(result.getPublicId());
+        return categoryMapper.toResponse(categoryRepository.save(category));
     }
 
     private Category findCategory(Long id) {

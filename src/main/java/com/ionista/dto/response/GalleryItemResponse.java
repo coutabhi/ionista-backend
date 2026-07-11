@@ -7,12 +7,12 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CategoryResponse {
+public class GalleryItemResponse {
 
     private Long id;
-    private String name;
-    private String slug;
-    private Long parentId;
-    private boolean active;
+    private String title;
+    private String caption;
     private String imageUrl;
+    private int sortOrder;
+    private boolean active;
 }
