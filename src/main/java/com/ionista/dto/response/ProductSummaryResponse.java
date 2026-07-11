@@ -23,4 +23,5 @@ public class ProductSummaryResponse {
     private String primaryImageUrl;
     private String categoryName;
     private boolean active;
+    private boolean featured;
 }

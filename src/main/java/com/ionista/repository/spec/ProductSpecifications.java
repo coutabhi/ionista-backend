@@ -67,6 +67,13 @@ public final class ProductSpecifications {
         );
     }
 
+    public static Specification<Product> isFeatured(Boolean featured) {
+        if (featured == null) {
+            return null;
+        }
+        return (root, query, cb) -> cb.equal(root.get("featured"), featured);
+    }
+
     public static Specification<Product> hasSize(String size) {
         if (size == null || size.isBlank()) {
             return null;

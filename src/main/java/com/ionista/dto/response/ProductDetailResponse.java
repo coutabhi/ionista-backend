@@ -26,6 +26,7 @@ public class ProductDetailResponse {
     private String sku;
     private String slug;
     private boolean active;
+    private boolean featured;
     private List<ProductVariantResponse> variants;
     private List<ProductImageResponse> images;
 }

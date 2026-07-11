@@ -48,7 +48,7 @@ public class ProductServiceImpl implements ProductService {
     public PageResponse<ProductSummaryResponse> list(Long categoryId, Gender gender, String brand,
                                                        BigDecimal minPrice, BigDecimal maxPrice,
                                                        String size, String color, String keyword,
-                                                       Pageable pageable) {
+                                                       Boolean featured, Pageable pageable) {
         Specification<Product> spec = Specification.where(ProductSpecifications.isActive())
                 .and(ProductSpecifications.hasCategory(categoryId))
                 .and(ProductSpecifications.hasGender(gender))
@@ -56,7 +56,8 @@ public class ProductServiceImpl implements ProductService {
                 .and(ProductSpecifications.priceBetween(minPrice, maxPrice))
                 .and(ProductSpecifications.hasSize(size))
                 .and(ProductSpecifications.hasColor(color))
-                .and(ProductSpecifications.nameContains(keyword));
+                .and(ProductSpecifications.nameContains(keyword))
+                .and(ProductSpecifications.isFeatured(featured));
 
         Page<Product> page = productRepository.findAll(spec, pageable);
         return PageResponse.of(page.map(productMapper::toSummary));
@@ -107,6 +108,7 @@ public class ProductServiceImpl implements ProductService {
                 .sku(request.getSku())
                 .slug(slug)
                 .active(request.getActive() == null || request.getActive())
+                .featured(request.getFeatured() != null && request.getFeatured())
                 .build();
 
         Product saved = productRepository.save(product);
@@ -155,6 +157,9 @@ public class ProductServiceImpl implements ProductService {
 
         if (request.getActive() != null) {
             product.setActive(request.getActive());
+        }
+        if (request.getFeatured() != null) {
+            product.setFeatured(request.getFeatured());
         }
 
         return productMapper.toDetail(productRepository.save(product));

@@ -15,6 +15,7 @@ import com.ionista.exception.InvalidTokenException;
 import com.ionista.repository.OAuthExchangeCodeRepository;
 import com.ionista.repository.UserRepository;
 import com.ionista.security.JwtService;
+import com.ionista.service.EmailService;
 import com.ionista.service.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,8 @@ class AuthServiceImplTest {
     private ReferralCodeGenerator referralCodeGenerator;
     @Mock
     private OAuthExchangeCodeRepository oAuthExchangeCodeRepository;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private AuthServiceImpl authService;
