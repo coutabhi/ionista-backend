@@ -17,6 +17,7 @@ import com.ionista.exception.ResourceNotFoundException;
 import com.ionista.mapper.OrderMapper;
 import com.ionista.repository.*;
 import com.ionista.service.CouponService;
+import com.ionista.service.EmailService;
 import com.ionista.service.LoyaltyService;
 import com.ionista.service.PricingService;
 import com.ionista.service.RazorpayService;
@@ -61,6 +62,7 @@ class OrderServiceImplTest {
     @Mock private RazorpayService razorpayService;
     @Mock private StockAdjustmentService stockAdjustmentService;
     @Mock private LoyaltyService loyaltyService;
+    @Mock private EmailService emailService;
     @Mock private OrderMapper orderMapper;
 
     private ObjectMapper objectMapper = new ObjectMapper();

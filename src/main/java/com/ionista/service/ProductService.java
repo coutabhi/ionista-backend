@@ -16,7 +16,7 @@ public interface ProductService {
     PageResponse<ProductSummaryResponse> list(Long categoryId, Gender gender, String brand,
                                                BigDecimal minPrice, BigDecimal maxPrice,
                                                String size, String color, String keyword,
-                                               Pageable pageable);
+                                               Boolean featured, Pageable pageable);
 
     PageResponse<ProductSummaryResponse> listByCategory(Long categoryId, Pageable pageable);
 

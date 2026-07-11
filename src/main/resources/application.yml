@@ -57,6 +57,11 @@ razorpay:
   key-secret: ${RAZORPAY_KEY_SECRET}
   webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
 
+resend:
+  api-key: ${RESEND_API_KEY:}
+  from-email: ${RESEND_FROM_EMAIL:onboarding@resend.dev}
+  from-name: ${RESEND_FROM_NAME:Ionista}
+
 shipping:
   flat-fee: ${SHIPPING_FLAT_FEE:0}
 

@@ -34,8 +34,9 @@ public class ProductController {
             @RequestParam(name = "variantSize", required = false) String size,
             @RequestParam(required = false) String color,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Boolean featured,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.list(categoryId, gender, brand, minPrice, maxPrice, size, color, keyword, pageable));
+        return ResponseEntity.ok(productService.list(categoryId, gender, brand, minPrice, maxPrice, size, color, keyword, featured, pageable));
     }
 
     @GetMapping("/api/v1/products/{id}")

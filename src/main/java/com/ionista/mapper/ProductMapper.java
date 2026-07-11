@@ -42,6 +42,7 @@ public class ProductMapper {
                 .primaryImageUrl(primaryImageUrl)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .active(product.isActive())
+                .featured(product.isFeatured())
                 .build();
     }
 
@@ -69,6 +70,7 @@ public class ProductMapper {
                 .sku(product.getSku())
                 .slug(product.getSlug())
                 .active(product.isActive())
+                .featured(product.isFeatured())
                 .variants(variants)
                 .images(images)
                 .build();

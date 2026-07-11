@@ -16,14 +16,17 @@ import com.ionista.repository.OAuthExchangeCodeRepository;
 import com.ionista.repository.UserRepository;
 import com.ionista.security.JwtService;
 import com.ionista.service.AuthService;
+import com.ionista.service.EmailService;
 import com.ionista.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -34,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final ReferralCodeGenerator referralCodeGenerator;
     private final OAuthExchangeCodeRepository oAuthExchangeCodeRepository;
+    private final EmailService emailService;
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
@@ -65,6 +69,12 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        try {
+            emailService.sendWelcomeEmail(savedUser);
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to {}", savedUser.getEmail(), e);
+        }
 
         String accessToken = jwtService.generateAccessToken(savedUser);
         String refreshToken = refreshTokenService.issueRefreshToken(savedUser);

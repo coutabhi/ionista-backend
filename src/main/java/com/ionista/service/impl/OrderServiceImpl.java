@@ -21,6 +21,7 @@ import com.ionista.exception.ResourceNotFoundException;
 import com.ionista.mapper.OrderMapper;
 import com.ionista.repository.*;
 import com.ionista.service.CouponService;
+import com.ionista.service.EmailService;
 import com.ionista.service.LoyaltyService;
 import com.ionista.service.OrderService;
 import com.ionista.service.PricingService;
@@ -58,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
     private final RazorpayService razorpayService;
     private final StockAdjustmentService stockAdjustmentService;
     private final LoyaltyService loyaltyService;
+    private final EmailService emailService;
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
 
@@ -325,6 +327,12 @@ public class OrderServiceImpl implements OrderService {
             loyaltyService.awardReferralBonusIfEligible(order.getUser(), order);
         }
 
+        try {
+            emailService.sendOrderStatusEmail(order);
+        } catch (Exception e) {
+            log.error("Failed to send order status email for order {}", order.getId(), e);
+        }
+
         return orderMapper.toResponse(order);
     }
 
@@ -357,6 +365,12 @@ public class OrderServiceImpl implements OrderService {
 
         cartRepository.findByUserId(order.getUser().getId())
                 .ifPresent(cart -> cartItemRepository.deleteByCartId(cart.getId()));
+
+        try {
+            emailService.sendOrderConfirmationEmail(order);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation email for order {}", order.getId(), e);
+        }
     }
 
     private void decrementStockWithRetry(Long variantId, int quantity) {

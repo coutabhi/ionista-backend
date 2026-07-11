@@ -44,4 +44,6 @@ public class ProductRequest {
     private String slug;
 
     private Boolean active;
+
+    private Boolean featured;
 }
