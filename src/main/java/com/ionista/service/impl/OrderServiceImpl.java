@@ -62,6 +62,7 @@ public class OrderServiceImpl implements OrderService {
     private final LoyaltyService loyaltyService;
     private final EmailService emailService;
     private final InvoicePdfService invoicePdfService;
+    private final WebhookAuditService webhookAuditService;
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
 
@@ -243,23 +244,25 @@ public class OrderServiceImpl implements OrderService {
             return;
         }
 
-        payment.setRawWebhookPayload(payload);
-
         if ("payment.captured".equals(event)) {
-            if (payment.getStatus() == PaymentStatus.PAID) {
-                paymentRepository.save(payment);
-                return;
+            if (payment.getStatus() != PaymentStatus.PAID) {
+                payment.setRazorpayPaymentId(paymentEntity.path("id").asText(null));
+                payment.setMethod(paymentEntity.path("method").asText(null));
+                confirmOrderPayment(payment);
             }
-            payment.setRazorpayPaymentId(paymentEntity.path("id").asText(null));
-            payment.setMethod(paymentEntity.path("method").asText(null));
-            confirmOrderPayment(payment);
         } else if ("payment.failed".equals(event)) {
             if (payment.getStatus() != PaymentStatus.PAID) {
                 payment.setStatus(PaymentStatus.FAILED);
+                paymentRepository.save(payment);
             }
-            paymentRepository.save(payment);
-        } else {
-            paymentRepository.save(payment);
+        }
+
+        // Isolated in its own transaction — must never roll back the confirmation work above
+        // (e.g. if the payload is too large for the column).
+        try {
+            webhookAuditService.saveRawPayload(payment.getId(), payload);
+        } catch (Exception e) {
+            log.error("Failed to persist raw webhook payload for payment {}", payment.getId(), e);
         }
     }
 
@@ -358,7 +361,11 @@ public class OrderServiceImpl implements OrderService {
         payment.setStatus(PaymentStatus.PAID);
         paymentRepository.save(payment);
 
-        Order order = payment.getOrder();
+        // Lock the order row so a concurrent confirmation attempt (client verify() vs. Razorpay webhook,
+        // which can both fire for the same payment within milliseconds of each other) blocks here instead
+        // of both racing past the PENDING check and double-processing stock/coupon/loyalty/cart.
+        Order order = orderRepository.findByIdForUpdate(payment.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         if (order.getStatus() != OrderStatus.PENDING) {
             return;
         }
