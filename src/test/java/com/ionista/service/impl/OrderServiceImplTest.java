@@ -64,6 +64,7 @@ class OrderServiceImplTest {
     @Mock private LoyaltyService loyaltyService;
     @Mock private EmailService emailService;
     @Mock private com.ionista.service.InvoicePdfService invoicePdfService;
+    @Mock private WebhookAuditService webhookAuditService;
     @Mock private OrderMapper orderMapper;
 
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -325,6 +326,7 @@ class OrderServiceImplTest {
         when(paymentRepository.findByRazorpayOrderId("rzp_order_1")).thenReturn(Optional.of(payment));
         when(razorpayService.verifyPaymentSignature("rzp_order_1", "pay_1", "good-sig")).thenReturn(true);
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(order));
         when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
 
@@ -347,6 +349,7 @@ class OrderServiceImplTest {
         when(paymentRepository.findByRazorpayOrderId("rzp_order_1")).thenReturn(Optional.of(payment));
         when(razorpayService.verifyPaymentSignature("rzp_order_1", "pay_1", "good-sig")).thenReturn(true);
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+        when(orderRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(order));
         when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
 
@@ -397,12 +400,14 @@ class OrderServiceImplTest {
         when(razorpayService.verifyWebhookSignature(payload, "sig")).thenReturn(true);
         when(paymentRepository.findByRazorpayOrderId("rzp_order_1")).thenReturn(Optional.of(payment));
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(order));
 
         orderService.handleRazorpayWebhook(payload, "sig");
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getRazorpayPaymentId()).isEqualTo("pay_1");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        verify(webhookAuditService).saveRawPayload(payment.getId(), payload);
     }
 
     @Test
@@ -415,6 +420,7 @@ class OrderServiceImplTest {
         when(razorpayService.verifyWebhookSignature(payload, "sig")).thenReturn(true);
         when(paymentRepository.findByRazorpayOrderId("rzp_order_1")).thenReturn(Optional.of(payment));
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+        when(orderRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(order));
 
         orderService.handleRazorpayWebhook(payload, "sig");
 
@@ -432,8 +438,10 @@ class OrderServiceImplTest {
 
         orderService.handleRazorpayWebhook(payload, "sig");
 
-        verify(paymentRepository).save(payment);
+        verify(paymentRepository, never()).save(any());
         verify(orderRepository, never()).save(any());
+        verify(orderRepository, never()).findByIdForUpdate(any());
+        verify(webhookAuditService).saveRawPayload(payment.getId(), payload);
     }
 
     @Test

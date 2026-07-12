@@ -40,6 +40,6 @@ public class Payment extends BaseEntity {
     private String method;
 
     @Lob
-    @Column(name = "raw_webhook_payload")
+    @Column(name = "raw_webhook_payload", columnDefinition = "LONGTEXT")
     private String rawWebhookPayload;
 }
