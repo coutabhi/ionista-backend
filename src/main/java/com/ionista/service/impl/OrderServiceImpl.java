@@ -22,6 +22,7 @@ import com.ionista.mapper.OrderMapper;
 import com.ionista.repository.*;
 import com.ionista.service.CouponService;
 import com.ionista.service.EmailService;
+import com.ionista.service.InvoicePdfService;
 import com.ionista.service.LoyaltyService;
 import com.ionista.service.OrderService;
 import com.ionista.service.PricingService;
@@ -60,6 +61,7 @@ public class OrderServiceImpl implements OrderService {
     private final StockAdjustmentService stockAdjustmentService;
     private final LoyaltyService loyaltyService;
     private final EmailService emailService;
+    private final InvoicePdfService invoicePdfService;
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
 
@@ -316,19 +318,35 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse updateStatus(Long id, OrderStatus newStatus) {
+    public OrderResponse updateStatus(Long id, OrderStatus newStatus, String trackingNumber, String trackingCarrier, String trackingUrl) {
         Order order = reloadOrder(id);
         validateTransition(order.getStatus(), newStatus);
         order.setStatus(newStatus);
+
+        if (newStatus == OrderStatus.SHIPPED) {
+            if (trackingNumber == null || trackingNumber.isBlank()) {
+                throw new BadRequestException("Tracking number is required when marking an order as shipped");
+            }
+            order.setTrackingNumber(trackingNumber.trim());
+            order.setTrackingCarrier(trackingCarrier != null && !trackingCarrier.isBlank() ? trackingCarrier.trim() : null);
+            order.setTrackingUrl(trackingUrl != null && !trackingUrl.isBlank() ? trackingUrl.trim() : null);
+        }
+
         orderRepository.save(order);
 
+        byte[] invoicePdf = null;
         if (newStatus == OrderStatus.DELIVERED) {
             loyaltyService.earnPointsForOrder(order);
             loyaltyService.awardReferralBonusIfEligible(order.getUser(), order);
+            try {
+                invoicePdf = invoicePdfService.generateInvoice(order);
+            } catch (Exception e) {
+                log.error("Failed to generate invoice PDF for delivered order {}", order.getId(), e);
+            }
         }
 
         try {
-            emailService.sendOrderStatusEmail(order);
+            emailService.sendOrderStatusEmail(order, invoicePdf);
         } catch (Exception e) {
             log.error("Failed to send order status email for order {}", order.getId(), e);
         }
@@ -364,12 +382,20 @@ public class OrderServiceImpl implements OrderService {
         }
 
         cartRepository.findByUserId(order.getUser().getId())
-                .ifPresent(cart -> cartItemRepository.deleteByCartId(cart.getId()));
+                .ifPresentOrElse(
+                        cart -> {
+                            log.info("Clearing cart {} for user {} after confirming order {}",
+                                    cart.getId(), order.getUser().getId(), order.getId());
+                            cartItemRepository.deleteByCartId(cart.getId());
+                        },
+                        () -> log.warn("No cart found for user {} while confirming order {} — nothing to clear",
+                                order.getUser().getId(), order.getId()));
 
         try {
-            emailService.sendOrderConfirmationEmail(order);
+            byte[] invoicePdf = invoicePdfService.generateInvoice(order);
+            emailService.sendOrderConfirmationEmail(order, invoicePdf);
         } catch (Exception e) {
-            log.error("Failed to send order confirmation email for order {}", order.getId(), e);
+            log.error("Failed to send order confirmation email (with invoice) for order {}", order.getId(), e);
         }
     }
 

@@ -133,6 +133,13 @@
       <version>2.6.0</version>
     </dependency>
 
+    <!-- Flying Saucer + OpenPDF (HTML -> PDF invoice generation) -->
+    <dependency>
+      <groupId>org.xhtmlrenderer</groupId>
+      <artifactId>flying-saucer-pdf-openpdf</artifactId>
+      <version>9.1.22</version>
+    </dependency>
+
     <!-- Testing -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

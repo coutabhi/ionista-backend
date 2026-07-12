@@ -86,6 +86,15 @@ public class Order extends BaseEntity {
     @Column(name = "ship_country", nullable = false, length = 100)
     private String shipCountry;
 
+    @Column(name = "tracking_number", length = 100)
+    private String trackingNumber;
+
+    @Column(name = "tracking_carrier", length = 100)
+    private String trackingCarrier;
+
+    @Column(name = "tracking_url", length = 500)
+    private String trackingUrl;
+
     @OneToMany(mappedBy = "order", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();

@@ -35,5 +35,8 @@ public class OrderResponse {
     private String shipState;
     private String shipPostalCode;
     private String shipCountry;
+    private String trackingNumber;
+    private String trackingCarrier;
+    private String trackingUrl;
     private List<OrderItemResponse> items;
 }

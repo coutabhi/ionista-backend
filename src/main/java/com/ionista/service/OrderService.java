@@ -26,5 +26,5 @@ public interface OrderService {
 
     OrderResponse adminDetail(Long id);
 
-    OrderResponse updateStatus(Long id, OrderStatus newStatus);
+    OrderResponse updateStatus(Long id, OrderStatus newStatus, String trackingNumber, String trackingCarrier, String trackingUrl);
 }

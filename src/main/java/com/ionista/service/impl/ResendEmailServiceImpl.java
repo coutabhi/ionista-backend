@@ -11,6 +11,8 @@ import org.springframework.web.client.RestClient;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,22 +47,36 @@ public class ResendEmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendOrderConfirmationEmail(Order order) {
+    public void sendOrderConfirmationEmail(Order order, byte[] invoicePdf) {
         String html = shell("Your order is confirmed",
                 "<p>Hi " + order.getShipFullName() + ",</p>"
                         + "<p>We've received your order <strong>#" + order.getId() + "</strong> placed on "
                         + order.getPlacedAt().format(DATE_FORMAT) + " for a total of <strong>₹" + order.getTotalAmount() + "</strong>.</p>"
                         + "<p>It will be shipped to: " + order.getShipLine1() + ", " + order.getShipCity() + ", " + order.getShipState()
-                        + " " + order.getShipPostalCode() + "</p>");
-        sendOne(order.getUser().getEmail(), "Order Confirmed — #" + order.getId(), html);
+                        + " " + order.getShipPostalCode() + "</p>"
+                        + (invoicePdf != null ? "<p>Your invoice is attached to this email.</p>" : ""));
+        sendOne(order.getUser().getEmail(), "Order Confirmed — #" + order.getId(), html, invoicePdf, invoiceFilename(order));
     }
 
     @Override
-    public void sendOrderStatusEmail(Order order) {
+    public void sendOrderStatusEmail(Order order, byte[] invoicePdf) {
         String html = shell("Order #" + order.getId() + " update",
                 "<p>Hi " + order.getShipFullName() + ",</p>"
-                        + "<p>Your order status has changed to <strong>" + order.getStatus() + "</strong>.</p>");
-        sendOne(order.getUser().getEmail(), "Order #" + order.getId() + " is now " + order.getStatus(), html);
+                        + "<p>Your order status has changed to <strong>" + order.getStatus() + "</strong>.</p>"
+                        + (order.getTrackingNumber() != null
+                                ? "<p>Tracking number: <strong>" + order.getTrackingNumber() + "</strong>"
+                                        + (order.getTrackingCarrier() != null ? " (" + order.getTrackingCarrier() + ")" : "")
+                                        + (order.getTrackingUrl() != null
+                                                ? " — <a href=\"" + order.getTrackingUrl() + "\">track your shipment</a>"
+                                                : "")
+                                        + "</p>"
+                                : "")
+                        + (invoicePdf != null ? "<p>Your invoice is attached to this email.</p>" : ""));
+        sendOne(order.getUser().getEmail(), "Order #" + order.getId() + " is now " + order.getStatus(), html, invoicePdf, invoiceFilename(order));
+    }
+
+    private String invoiceFilename(Order order) {
+        return "Ionista-Invoice-" + order.getId() + ".pdf";
     }
 
     @Override
@@ -96,15 +112,26 @@ public class ResendEmailServiceImpl implements EmailService {
     }
 
     private void sendOne(String to, String subject, String html) {
+        sendOne(to, subject, html, null, null);
+    }
+
+    private void sendOne(String to, String subject, String html, byte[] attachmentBytes, String attachmentFilename) {
         if (!configured) {
             log.warn("Resend API key not configured — skipping email '{}' to {}", subject, to);
             return;
         }
         try {
-            restClient.post().uri("/emails")
-                    .body(Map.of("from", fromHeader, "to", List.of(to), "subject", subject, "html", html))
-                    .retrieve()
-                    .toBodilessEntity();
+            Map<String, Object> body = new HashMap<>();
+            body.put("from", fromHeader);
+            body.put("to", List.of(to));
+            body.put("subject", subject);
+            body.put("html", html);
+            if (attachmentBytes != null && attachmentFilename != null) {
+                body.put("attachments", List.of(Map.of(
+                        "filename", attachmentFilename,
+                        "content", Base64.getEncoder().encodeToString(attachmentBytes))));
+            }
+            restClient.post().uri("/emails").body(body).retrieve().toBodilessEntity();
         } catch (Exception e) {
             log.error("Failed to send email '{}' to {}: {}", subject, to, e.getMessage());
         }

@@ -10,9 +10,9 @@ public interface EmailService {
 
     void sendWelcomeEmail(User user);
 
-    void sendOrderConfirmationEmail(Order order);
+    void sendOrderConfirmationEmail(Order order, byte[] invoicePdf);
 
-    void sendOrderStatusEmail(Order order);
+    void sendOrderStatusEmail(Order order, byte[] invoicePdf);
 
     EmailSendResult sendBulk(List<String> recipientEmails, String subject, String bodyHtml);
 }
