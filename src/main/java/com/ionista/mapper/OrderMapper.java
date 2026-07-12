@@ -33,6 +33,9 @@ public class OrderMapper {
                 .shipState(order.getShipState())
                 .shipPostalCode(order.getShipPostalCode())
                 .shipCountry(order.getShipCountry())
+                .trackingNumber(order.getTrackingNumber())
+                .trackingCarrier(order.getTrackingCarrier())
+                .trackingUrl(order.getTrackingUrl())
                 .items(order.getOrderItems().stream().map(this::toItemResponse).toList())
                 .build();
     }

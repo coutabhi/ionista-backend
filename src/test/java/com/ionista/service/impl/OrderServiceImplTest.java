@@ -63,6 +63,7 @@ class OrderServiceImplTest {
     @Mock private StockAdjustmentService stockAdjustmentService;
     @Mock private LoyaltyService loyaltyService;
     @Mock private EmailService emailService;
+    @Mock private com.ionista.service.InvoicePdfService invoicePdfService;
     @Mock private OrderMapper orderMapper;
 
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -337,6 +338,26 @@ class OrderServiceImplTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
     }
 
+    @Test
+    void verifyPayment_clearsCartItems_whenCartHasItems() {
+        Order order = buildOrderWithPayment(OrderStatus.PENDING, PaymentStatus.CREATED);
+        Payment payment = order.getPayment();
+        Cart cart = buildCartWithItem(2, 10);
+
+        when(paymentRepository.findByRazorpayOrderId("rzp_order_1")).thenReturn(Optional.of(payment));
+        when(razorpayService.verifyPaymentSignature("rzp_order_1", "pay_1", "good-sig")).thenReturn(true);
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
+        when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
+
+        VerifyPaymentRequest request = VerifyPaymentRequest.builder()
+                .razorpayOrderId("rzp_order_1").razorpayPaymentId("pay_1").razorpaySignature("good-sig").build();
+
+        orderService.verifyPayment(request);
+
+        verify(cartItemRepository).deleteByCartId(10L);
+    }
+
     // ---- handleRazorpayWebhook ----
 
     @Test
@@ -382,6 +403,22 @@ class OrderServiceImplTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getRazorpayPaymentId()).isEqualTo("pay_1");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    void handleRazorpayWebhook_clearsCartItems_whenCartHasItems() {
+        Order order = buildOrderWithPayment(OrderStatus.PENDING, PaymentStatus.CREATED);
+        Payment payment = order.getPayment();
+        Cart cart = buildCartWithItem(2, 10);
+        String payload = "{\"event\":\"payment.captured\",\"payload\":{\"payment\":{\"entity\":{\"order_id\":\"rzp_order_1\",\"id\":\"pay_1\",\"method\":\"card\"}}}}";
+
+        when(razorpayService.verifyWebhookSignature(payload, "sig")).thenReturn(true);
+        when(paymentRepository.findByRazorpayOrderId("rzp_order_1")).thenReturn(Optional.of(payment));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+
+        orderService.handleRazorpayWebhook(payload, "sig");
+
+        verify(cartItemRepository).deleteByCartId(10L);
     }
 
     @Test
@@ -493,7 +530,7 @@ class OrderServiceImplTest {
         Order order = buildOrderWithPayment(OrderStatus.PENDING, PaymentStatus.CREATED);
         when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> orderService.updateStatus(200L, OrderStatus.DELIVERED))
+        assertThatThrownBy(() -> orderService.updateStatus(200L, OrderStatus.DELIVERED, null, null, null))
                 .isInstanceOf(ConflictException.class);
     }
 
@@ -503,7 +540,7 @@ class OrderServiceImplTest {
         when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
 
-        orderService.updateStatus(200L, OrderStatus.CONFIRMED);
+        orderService.updateStatus(200L, OrderStatus.CONFIRMED, null, null, null);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         verify(loyaltyService, never()).earnPointsForOrder(any());
@@ -515,10 +552,54 @@ class OrderServiceImplTest {
         when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
 
-        orderService.updateStatus(200L, OrderStatus.DELIVERED);
+        orderService.updateStatus(200L, OrderStatus.DELIVERED, null, null, null);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         verify(loyaltyService).earnPointsForOrder(order);
         verify(loyaltyService).awardReferralBonusIfEligible(user, order);
+    }
+
+    @Test
+    void updateStatus_throws_whenShippedWithoutTrackingNumber() {
+        Order order = buildOrderWithPayment(OrderStatus.CONFIRMED, PaymentStatus.PAID);
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateStatus(200L, OrderStatus.SHIPPED, null, null, null))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void updateStatus_throws_whenShippedWithBlankTrackingNumber() {
+        Order order = buildOrderWithPayment(OrderStatus.CONFIRMED, PaymentStatus.PAID);
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateStatus(200L, OrderStatus.SHIPPED, "   ", null, null))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void updateStatus_setsTrackingFields_onShippedTransition() {
+        Order order = buildOrderWithPayment(OrderStatus.CONFIRMED, PaymentStatus.PAID);
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
+        when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
+
+        orderService.updateStatus(200L, OrderStatus.SHIPPED, "TRK123", "BlueDart", "https://bluedart.com/track/TRK123");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SHIPPED);
+        assertThat(order.getTrackingNumber()).isEqualTo("TRK123");
+        assertThat(order.getTrackingCarrier()).isEqualTo("BlueDart");
+        assertThat(order.getTrackingUrl()).isEqualTo("https://bluedart.com/track/TRK123");
+    }
+
+    @Test
+    void updateStatus_doesNotRequireTracking_forNonShippedTransitions() {
+        Order order = buildOrderWithPayment(OrderStatus.PENDING, PaymentStatus.CREATED);
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(order));
+        when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().id(200L).build());
+
+        orderService.updateStatus(200L, OrderStatus.CONFIRMED, null, null, null);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(order.getTrackingNumber()).isNull();
     }
 }
